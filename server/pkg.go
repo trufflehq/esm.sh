@@ -39,7 +39,7 @@ func parsePkg(pathname string) (*Pkg, bool, error) {
 	// eg https://npm.tfl.dev/react@18.1.1
 	// including imports from other npm.tfl packages
 	// it will redirect to latest minor/path of major v18
-	if name == "react" {
+	if name == "react" || name == "react-dom" {
 		version = "18"
 	}
 
