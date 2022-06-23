@@ -369,7 +369,13 @@ func query(devMode bool) rex.Handle {
 
 		// check `deps` query
 		deps := PkgSlice{}
-		for _, p := range strings.Split(ctx.Form.Value("deps"), ",") {
+
+		// add equivalent of ?deps=react@18 to every lib
+		depsArr := strings.Split(ctx.Form.Value("deps"), ",")
+		depsArr = append(depsArr, "react@18")
+		depsArr = append(depsArr, "react-dom@18")
+
+		for _, p := range depsArr {
 			p = strings.TrimSpace(p)
 			if p != "" {
 				m, _, err := parsePkg(p)
