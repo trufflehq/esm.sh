@@ -34,6 +34,14 @@ func parsePkg(pathname string) (*Pkg, bool, error) {
 
 	name, version := utils.SplitByLastByte(packageName, '@')
 
+	if name != "" && (len(name) > 214 || !npmNaming.Is(name)) {
+		return nil, false, fmt.Errorf("invalid package name '%s'", name)
+	}
+
+	if scope != "" {
+		name = fmt.Sprintf("@%s/%s", scope, name)
+	}
+
 	// force react to use version 18
 	// even if something specific like react@18.1.1 is provided,
 	// eg https://npm.tfl.dev/react@18.1.1
@@ -41,14 +49,6 @@ func parsePkg(pathname string) (*Pkg, bool, error) {
 	// it will redirect to latest minor/path of major v18
 	if name == "react" || name == "react-dom" {
 		version = "18"
-	}
-
-	if name != "" && (len(name) > 214 || !npmNaming.Is(name)) {
-		return nil, false, fmt.Errorf("invalid package name '%s'", name)
-	}
-
-	if scope != "" {
-		name = fmt.Sprintf("@%s/%s", scope, name)
 	}
 
 	if regFullVersion.MatchString(version) {
