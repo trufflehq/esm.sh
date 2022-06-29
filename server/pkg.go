@@ -42,13 +42,15 @@ func parsePkg(pathname string) (*Pkg, bool, error) {
 		name = fmt.Sprintf("@%s/%s", scope, name)
 	}
 
-	// force react to use version 18
+	// force react to use single version
 	// even if something specific like react@18.1.1 is provided,
 	// eg https://npm.tfl.dev/react@18.1.1
 	// including imports from other npm.tfl packages
-	// it will redirect to latest minor/path of major v18
+	// it will redirect to latest minor/path of major vExperimental
+	// TODO: switch this (and deps in query.go) to react 19 when live
+	// https://github.com/facebook/react/issues/11347#issuecomment-988970952
 	if name == "react" || name == "react-dom" {
-		version = "18"
+		version = "experimental"
 	}
 
 	if regFullVersion.MatchString(version) {
