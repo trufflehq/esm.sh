@@ -253,6 +253,11 @@ func encodeAliasDepsPrefix(alias map[string]string, deps PkgSlice) string {
 		for _, pkg := range deps {
 			ss = append(ss, fmt.Sprintf("%s@%s", pkg.Name, pkg.Version))
 		}
+
+		// helps prevent: file name too long
+		// when external deps are provided
+		ss = removeDuplicateStr(ss)
+
 		ss.Sort()
 		args = append(args, fmt.Sprintf("d/%s", strings.Join(ss, ",")))
 	}
@@ -268,4 +273,16 @@ func getOrigin(host string) string {
 		proto = "http"
 	}
 	return fmt.Sprintf("%s://%s", proto, host)
+}
+
+func removeDuplicateStr(strSlice []string) []string {
+	allKeys := make(map[string]bool)
+	list := []string{}
+	for _, item := range strSlice {
+			if _, value := allKeys[item]; !value {
+					allKeys[item] = true
+					list = append(list, item)
+			}
+	}
+	return list
 }
