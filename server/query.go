@@ -81,7 +81,10 @@ func query(devMode bool) rex.Handle {
 			} else if baseRedirect {
 				url := strings.TrimPrefix(ctx.R.URL.String(), basePath)
 				url = fmt.Sprintf("%s/%s", basePath, url)
-				return rex.Redirect(url, http.StatusTemporaryRedirect)
+				// StatusTemporaryRedirect breaks node.js url imports (they have a fix that hasn't been released as of 7/22). They detect redirects with StatusCode > 300 && StatusCode < 303
+				// TODO: change back when this makes it into Node
+				// https://coverage.nodejs.org/coverage-6d3920d579a3dc3a/lib/internal/modules/esm/fetch_module.js.html#L131
+				return rex.Redirect(url, http.StatusFound)
 			} else {
 				return rex.Status(404, "not found")
 			}
@@ -220,7 +223,10 @@ func query(devMode bool) rex.Handle {
 			if query != "" {
 				query = "?" + query
 			}
-			return rex.Redirect(fmt.Sprintf("%s%s/%s%s", origin, prefix, reqPkg.String(), query), http.StatusTemporaryRedirect)
+			// StatusTemporaryRedirect breaks node.js url imports (they have a fix that hasn't been released as of 7/22). They detect redirects with StatusCode > 300 && StatusCode < 303
+			// TODO: change back when this makes it into Node
+			// https://coverage.nodejs.org/coverage-6d3920d579a3dc3a/lib/internal/modules/esm/fetch_module.js.html#L131
+			return rex.Redirect(fmt.Sprintf("%s%s/%s%s", origin, prefix, reqPkg.String(), query), http.StatusFound)
 		}
 
 		if banList[reqPkg.Name] {
@@ -274,7 +280,10 @@ func query(devMode bool) rex.Handle {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if !regFullVersionPath.MatchString(pathname) {
 					url := fmt.Sprintf("%s/%s", origin, reqPkg.String())
-					http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+					// StatusTemporaryRedirect breaks node.js url imports (they have a fix that hasn't been released as of 7/22). They detect redirects with StatusCode > 300 && StatusCode < 303
+					// TODO: change back when this makes it into Node
+					// https://coverage.nodejs.org/coverage-6d3920d579a3dc3a/lib/internal/modules/esm/fetch_module.js.html#L131
+					http.Redirect(w, r, url, http.StatusFound)
 					return
 				}
 				savePath := path.Join("raw", reqPkg.String())
@@ -618,7 +627,10 @@ func query(devMode bool) rex.Handle {
 
 			if !regFullVersionPath.MatchString(pathname) || !isPined {
 				url := fmt.Sprintf("%s/%s.css", origin, strings.TrimSuffix(taskID, ".js"))
-				return rex.Redirect(url, http.StatusTemporaryRedirect)
+				// StatusTemporaryRedirect breaks node.js url imports (they have a fix that hasn't been released as of 7/22). They detect redirects with StatusCode > 300 && StatusCode < 303
+				// TODO: change back when this makes it into Node
+				// https://coverage.nodejs.org/coverage-6d3920d579a3dc3a/lib/internal/modules/esm/fetch_module.js.html#L131
+				return rex.Redirect(url, http.StatusFound)
 			}
 
 			taskID = fmt.Sprintf("%s.css", strings.TrimSuffix(taskID, ".js"))
