@@ -222,11 +222,17 @@ CheckNodejs:
 		version:     version,
 		npmRegistry: "https://registry.npmjs.org/",
 	}
-
-	output, err := exec.Command("npm", "config", "get", "registry").CombinedOutput()
-	if err == nil {
-		node.npmRegistry = strings.TrimRight(strings.TrimSpace(string(output)), "/") + "/"
+	var output []byte
+	if npmRegistry == "" {
+		log.Infof("try to read npm registry config: npm config get registry")
+		output, err := exec.Command("npm", "config", "get", "registry").CombinedOutput()
+		if err == nil {
+			node.npmRegistry = strings.TrimRight(strings.TrimSpace(string(output)), "/") + "/"
+		}
+	} else {
+		node.npmRegistry = npmRegistry
 	}
+	log.Infof("use npm registry %s", node.npmRegistry)
 
 CheckYarn:
 	output, err = exec.Command("yarn", "-v").CombinedOutput()

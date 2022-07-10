@@ -18,7 +18,7 @@ import (
 )
 
 var banList = map[string]bool{
-	"@withfig/autocomplete": true,
+	"/@withfig/autocomplete": true,
 }
 
 var httpClient = &http.Client{
@@ -49,6 +49,13 @@ func query(devMode bool) rex.Handle {
 		// ban malicious requests
 		if strings.HasPrefix(pathname, ".") || strings.HasSuffix(pathname, ".php") {
 			return rex.Status(400, "Bad Request")
+		}
+
+		// ban malicious requests by banList
+		for prefix := range banList {
+			if strings.HasPrefix(pathname, prefix) {
+				return rex.Status(403, "forbidden")
+			}
 		}
 
 		// strip loc
@@ -102,7 +109,7 @@ func query(devMode bool) rex.Handle {
 				return err
 			}
 			readme = bytes.ReplaceAll(readme, []byte("./server/embed/"), []byte(basePath+"/embed/"))
-			readme = bytes.ReplaceAll(readme, []byte("./HOSTING.md"), []byte("https://github.com/esm-dev/esm.sh/blob/master/HOSTING.md"))
+			readme = bytes.ReplaceAll(readme, []byte("./HOSTING.md"), []byte("https://github.com/ije/esm.sh/blob/master/HOSTING.md"))
 			readme = bytes.ReplaceAll(readme, []byte("https://esm.sh"), []byte("{origin}"+basePath))
 			readmeStrLit := utils.MustEncodeJSON(string(readme))
 			html := bytes.ReplaceAll(indexHTML, []byte("'# README'"), readmeStrLit)
@@ -229,11 +236,6 @@ func query(devMode bool) rex.Handle {
 			return rex.Redirect(fmt.Sprintf("%s%s/%s%s", origin, prefix, reqPkg.String(), query), http.StatusFound)
 		}
 
-		if banList[reqPkg.Name] {
-			ctx.SetHeader("Cache-Control", "public, max-age=86400")
-			return rex.Status(403, "forbidden")
-		}
-
 		// since most transformers handle `jsxSource` by concating string "/jsx-runtime"
 		// we need to support url like `https://esm.sh/react?dev&target=esnext/jsx-runtime`
 		if (reqPkg.Name == "react" || reqPkg.Name == "preact") && strings.HasSuffix(ctx.R.URL.RawQuery, "/jsx-runtime") {
@@ -308,30 +310,50 @@ func query(devMode bool) rex.Handle {
 					http.ServeContent(w, r, savePath, modtime, f)
 					return
 				}
-				resp, err := httpClient.Get(fmt.Sprintf("https://unpkg.com/%s", reqPkg.String()))
+				if !strings.HasSuffix(unpkgOrigin, "/") {
+					unpkgOrigin += "/"
+				}
+				resp, err := httpClient.Get(fmt.Sprintf("%s%s", unpkgOrigin, reqPkg.String()))
 				if err != nil {
 					w.WriteHeader(500)
 					w.Write([]byte(err.Error()))
 					return
 				}
 				defer resp.Body.Close()
+
 				if resp.StatusCode >= 500 {
 					w.WriteHeader(http.StatusBadGateway)
 					w.Write([]byte("Bad Gateway"))
 					return
 				}
-				for key, values := range resp.Header {
-					for _, value := range values {
-						ctx.AddHeader(key, value)
-					}
-				}
+
 				if resp.StatusCode >= 400 {
 					w.WriteHeader(http.StatusBadGateway)
 					io.Copy(w, resp.Body)
 					return
 				}
+
+				n, err := fs.WriteFile(savePath, resp.Body)
+				if err != nil {
+					w.WriteHeader(500)
+					w.Write([]byte(err.Error()))
+					return
+				}
+
+				f, err := fs.ReadFile(savePath, n)
+				if err != nil {
+					w.WriteHeader(500)
+					w.Write([]byte(err.Error()))
+					return
+				}
+
+				for key, values := range resp.Header {
+					for _, value := range values {
+						ctx.AddHeader(key, value)
+					}
+				}
 				ctx.SetHeader("Cache-Control", "public, max-age=31536000, immutable")
-				fs.WriteFile(savePath, io.TeeReader(resp.Body, w))
+				io.Copy(w, f)
 			})
 		}
 
@@ -422,9 +444,10 @@ func query(devMode bool) rex.Handle {
 		isDev := ctx.Form.Has("dev")
 		isPined := ctx.Form.Has("pin")
 		isWorker := ctx.Form.Has("worker")
-		noCheck := ctx.Form.Has("no-check")
+		noCheck := ctx.Form.Has("no-check") || ctx.Form.Has("no-dts")
 		noRequire := ctx.Form.Has("no-require")
 		keepNames := ctx.Form.Has("keep-names")
+		ignoreAnnotations := ctx.Form.Has("ignore-annotations")
 
 		// force react/jsx-dev-runtime and react-refresh into `dev` mode
 		if !isDev {
@@ -469,6 +492,10 @@ func query(devMode bool) rex.Handle {
 					if endsWith(submodule, ".development") {
 						submodule = strings.TrimSuffix(submodule, ".development")
 						isDev = true
+					}
+					if endsWith(submodule, ".ia") {
+						submodule = strings.TrimSuffix(submodule, ".ia")
+						ignoreAnnotations = true
 					}
 					if endsWith(submodule, ".kn") {
 						submodule = strings.TrimSuffix(submodule, ".kn")
@@ -552,17 +579,18 @@ func query(devMode bool) rex.Handle {
 		}
 
 		task := &BuildTask{
-			CdnOrigin:    origin,
-			BuildVersion: buildVersion,
-			Pkg:          *reqPkg,
-			Alias:        alias,
-			Deps:         deps,
-			Target:       target,
-			DevMode:      isDev,
-			BundleMode:   isBundleMode || isWorker,
-			NoRequire:    noRequire,
-			KeepNames:    keepNames,
-			stage:        "init",
+			CdnOrigin:         origin,
+			BuildVersion:      buildVersion,
+			Pkg:               *reqPkg,
+			Alias:             alias,
+			Deps:              deps,
+			Target:            target,
+			DevMode:           isDev,
+			BundleMode:        isBundleMode || isWorker,
+			NoRequire:         noRequire,
+			KeepNames:         keepNames,
+			IgnoreAnnotations: ignoreAnnotations,
+			stage:             "init",
 		}
 		taskID := task.ID()
 		esm, err := findModule(taskID)

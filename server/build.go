@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -19,16 +21,17 @@ import (
 )
 
 type BuildTask struct {
-	CdnOrigin    string            `json:"cdnOrigin"`
-	BuildVersion int               `json:"buildVersion"`
-	Pkg          Pkg               `json:"pkg"`
-	Alias        map[string]string `json:"alias"`
-	Deps         PkgSlice          `json:"deps"`
-	Target       string            `json:"target"`
-	DevMode      bool              `json:"dev"`
-	BundleMode   bool              `json:"bundle"`
-	NoRequire    bool              `json:"noRequire"`
-	KeepNames    bool              `json:"keepNames"`
+	CdnOrigin         string            `json:"cdnOrigin"`
+	BuildVersion      int               `json:"buildVersion"`
+	Pkg               Pkg               `json:"pkg"`
+	Alias             map[string]string `json:"alias"`
+	Deps              PkgSlice          `json:"deps"`
+	Target            string            `json:"target"`
+	DevMode           bool              `json:"dev"`
+	BundleMode        bool              `json:"bundle"`
+	NoRequire         bool              `json:"noRequire"`
+	KeepNames         bool              `json:"keepNames"`
+	IgnoreAnnotations bool              `json:"ignoreAnnotations"`
 
 	// state
 	id    string
@@ -53,6 +56,9 @@ func (task *BuildTask) ID() string {
 	}
 	if task.KeepNames {
 		name += ".kn"
+	}
+	if task.IgnoreAnnotations {
+		name += ".ia"
 	}
 	if task.DevMode {
 		name += ".development"
@@ -304,9 +310,33 @@ func (task *BuildTask) build(tracing *stringSet) (esm *ModuleMeta, err error) {
 						}
 					}
 
-					// bundles undefined relative imports or the package/module it self
-					if isLocalImport(specifier) || specifier == task.Pkg.ImportPath() {
+					// bundle the package/module it self and the entrypoint
+					if specifier == task.Pkg.ImportPath() || specifier == entryPoint {
 						return api.OnResolveResult{}, nil
+					}
+
+					// for local modules
+					if isLocalImport(specifier) {
+						// bundle if the entry pkg is not a submodule
+						if task.Pkg.Submodule == "" {
+							return api.OnResolveResult{}, nil
+						}
+
+						// bundle if this pkg has 'exports' definitions but the local module is not in 'exports'
+						if npm.DefinedExports != nil && !reflect.ValueOf(npm.DefinedExports).IsNil() {
+							return api.OnResolveResult{}, nil
+						}
+
+						// otherwise do not bundle its local dependencies
+						var dirpath = args.ResolveDir
+						if strings.HasPrefix(dirpath, "/private/var/") {
+							dirpath = strings.TrimPrefix(dirpath, "/private")
+						}
+						fullFilepath := filepath.Join(dirpath, specifier)
+						// convert: full filepath --> package name + submodule path
+						specifier = strings.TrimPrefix(fullFilepath, filepath.Join(task.wd, "node_modules")+"/")
+						external.Add(specifier)
+						return api.OnResolveResult{Path: "__ESM_SH_EXTERNAL:" + specifier, External: true}, nil
 					}
 
 					// ignore `require()` of esm package
@@ -333,7 +363,8 @@ esbuild:
 		MinifyWhitespace:  !task.DevMode,
 		MinifyIdentifiers: !task.DevMode,
 		MinifySyntax:      !task.DevMode,
-		KeepNames:         task.KeepNames, // prevent class/function names erasing
+		KeepNames:         task.KeepNames,         // prevent class/function names erasing
+		IgnoreAnnotations: task.IgnoreAnnotations, // some libs maybe use wrong side-effect annotations
 		Plugins:           []api.Plugin{esmResolverPlugin},
 		Loader: map[string]api.Loader{
 			".wasm":  api.LoaderDataURL,
