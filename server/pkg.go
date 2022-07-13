@@ -50,7 +50,7 @@ func parsePkg(pathname string) (*Pkg, bool, error) {
 	// TODO: switch this (and deps in query.go) to react 19 when live
 	// https://github.com/facebook/react/issues/11347#issuecomment-988970952
 	if name == "react" || name == "react-dom" {
-		version = "experimental"
+		version = "0.0.0-experimental-7a4336c40-20220712"
 	}
 
 	if regFullVersion.MatchString(version) {

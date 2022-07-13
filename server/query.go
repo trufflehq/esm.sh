@@ -403,8 +403,8 @@ func query(devMode bool) rex.Handle {
 
 		// add equivalent of ?deps=react@18 to every lib
 		depsArr := strings.Split(ctx.Form.Value("deps"), ",")
-		depsArr = append(depsArr, "react@experimental")
-		depsArr = append(depsArr, "react-dom@experimental")
+		depsArr = append(depsArr, "react@0.0.0-experimental-7a4336c40-20220712")
+		depsArr = append(depsArr, "react-dom@0.0.0-experimental-7a4336c40-20220712")
 
 		for _, p := range depsArr {
 			p = strings.TrimSpace(p)
