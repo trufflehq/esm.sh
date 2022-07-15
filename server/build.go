@@ -792,6 +792,12 @@ func (task *BuildTask) checkDTS(esm *ModuleMeta, npm *NpmPackage) {
 	} else if !strings.HasPrefix(name, "@types/") {
 		versions := []string{"latest"}
 		versionParts := strings.Split(task.Pkg.Version, ".")
+
+		// TODO: remove when we're not using react experimental anymore
+		if (task.Pkg.Name == "react") {
+			versionParts = strings.Split("18.0.0", ".")
+		}
+
 		if len(versionParts) > 2 {
 			versions = []string{
 				"~" + strings.Join(versionParts[:2], "."), // minor
