@@ -405,6 +405,7 @@ func query(devMode bool) rex.Handle {
 		depsArr := strings.Split(ctx.Form.Value("deps"), ",")
 		depsArr = append(depsArr, "react@0.0.0-experimental-7a4336c40-20220712")
 		depsArr = append(depsArr, "react-dom@0.0.0-experimental-7a4336c40-20220712")
+		depsArr = append(depsArr, "@microsoft/fast-element@2.0.0-beta.3") // TODO: remove when we're on non-alpha/beta fast-foundation/element
 
 		for _, p := range depsArr {
 			p = strings.TrimSpace(p)
