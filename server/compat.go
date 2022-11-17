@@ -7,8 +7,7 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/ije/esbuild-internal/compat"
-	// FIXME: bring back when oscar supports multiple targets
-	// "github.com/mssola/user_agent"
+	"github.com/mssola/user_agent"
 )
 
 var regBrowserVersion = regexp.MustCompile(`^([0-9]+)(?:\.([0-9]+))?(?:\.([0-9]+))?$`)
@@ -167,32 +166,30 @@ func getTargetByUA(ua string) string {
 	if strings.HasPrefix(ua, "Node/") {
 		return "node"
 	}
-	// FIXME: bring back when oscar supports multiple targets
-
-	// name, version := user_agent.New(ua).Browser()
-	// if engine, ok := engines[strings.ToLower(name)]; ok {
-	// 	a := strings.Split(version, ".")
-	// 	if len(a) > 3 {
-	// 		version = strings.Join(a[:3], ".")
-	// 	}
-	// 	unspportEngineFeatures := validateEngineFeatures(api.Engine{
-	// 		Name:    engine,
-	// 		Version: version,
-	// 	})
-	// 	for _, target := range []string{
-	// 		"es2022",
-	// 		"es2021",
-	// 		"es2020",
-	// 		"es2019",
-	// 		"es2018",
-	// 		"es2017",
-	// 		"es2016",
-	// 	} {
-	// 		unspportESMAFeatures := validateESMAFeatures(targets[target])
-	// 		if unspportEngineFeatures <= unspportESMAFeatures {
-	// 			return target
-	// 		}
-	// 	}
-	// }
+	name, version := user_agent.New(ua).Browser()
+	if engine, ok := engines[strings.ToLower(name)]; ok {
+		a := strings.Split(version, ".")
+		if len(a) > 3 {
+			version = strings.Join(a[:3], ".")
+		}
+		unspportEngineFeatures := validateEngineFeatures(api.Engine{
+			Name:    engine,
+			Version: version,
+		})
+		for _, target := range []string{
+			"es2022",
+			"es2021",
+			"es2020",
+			"es2019",
+			"es2018",
+			"es2017",
+			"es2016",
+		} {
+			unspportESMAFeatures := validateESMAFeatures(targets[target])
+			if unspportEngineFeatures <= unspportESMAFeatures {
+				return target
+			}
+		}
+	}
 	return "es2015"
 }
