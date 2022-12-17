@@ -430,14 +430,14 @@ func query(devMode bool) rex.Handle {
 			// FIXME: react is pinned to es2022 until oscar supports separate bundles for different es
 			// otherwise bundled vs non-bundled code potentially pull in different react versions.
 			// eg bundled always uses es2022, but opera/edge use es2021
-			if reqPkg.Name == "react" || reqPkg.Name == "react-dom" {
-				// es2022 instead of es2015 bc we have a bunch of old bundles that have es2022 in them.
-				// i don't *think* anything will break in older browsers, since react code prob doesn't
-				// distribute new es features anyways
-				target = "es2022"
-			} else {
-				target = getTargetByUA(ctx.R.UserAgent())
-			}
+			// if reqPkg.Name == "react" || reqPkg.Name == "react-dom" {
+			// 	// es2022 instead of es2015 bc we have a bunch of old bundles that have es2022 in them.
+			// 	// i don't *think* anything will break in older browsers, since react code prob doesn't
+			// 	// distribute new es features anyways
+			// 	target = "es2022"
+			// } else {
+			target = getTargetByUA(ctx.R.UserAgent())
+			// }
 		}
 
 		buildVersion := VERSION
